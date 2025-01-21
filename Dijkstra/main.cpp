@@ -92,6 +92,7 @@ void main()
 
 void AStar()
 {
+	std::vector<Node> allNodes;
 	std::vector<Node> openNodes;
 	std::vector<Node> closedNodes;
 	std::vector<Node> childrens;
@@ -109,9 +110,9 @@ void AStar()
 		{
 			Node myNode = Node(Vector2(x, y));
 
-			openNodes.push_back(myNode);
+			allNodes.push_back(myNode);
 
-			if (x == 0 && y == 1)
+			if (x == start.x && y == start.y)
 			{
 				startNode = myNode;
 
@@ -119,15 +120,20 @@ void AStar()
 				startNode.h = 100;
 				startNode.f = 100;
 			}
+			else if (x == goal.x && y == goal.y)
+			{
+				endNode = myNode;
+			}
 		}
 	}
 
 	currentNode = startNode;
 	while (openNodes.size() != 0)
 	{
+		int optimalF = inf;
 		for (Node node : openNodes)
 		{
-			if (node.f < currentNode.f)
+			if (node.f < optimalF)
 			{
 				currentNode = node;
 			}
@@ -142,7 +148,7 @@ void AStar()
 		}
 
 		childrens.clear();
-		for (Node node : openNodes)
+		for (Node node : allNodes)
 		{
 			if (currentNode.GetDistance(&node) < 2)
 			{
@@ -150,10 +156,26 @@ void AStar()
 			}
 		}
 
+		int optimalG = inf;
 		for (Node child : childrens)
 		{
 			child.g = currentNode.g + child.GetDistance(&currentNode);
-			child.h = child.GetDistance()
+			child.h = child.GetDistance(&endNode);
+			child.f = child.g + child.h;
+
+			bool shouldBeAdded = true; 
+			for (Node node : openNodes)
+			{
+				if (child.g > node.g)
+				{
+					shouldBeAdded = false;
+				}
+			}
+
+			if (shouldBeAdded)
+			{
+				openNodes.push_back(child);
+			}
 		}
 	}
 }
