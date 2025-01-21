@@ -6,6 +6,7 @@
 void Dijkstra(int origin, int graph[12][12], int dist[], int pred[]);
 void GetPath(int destination, int dist[], int pred[], char nodesLetters[]);
 void GPS(int origin, int destination);
+void AStar();
 
 
 
@@ -28,19 +29,25 @@ struct Vector2
 		return x == goal.x && y == goal.y;
 	}
 
+	bool operator!=(const Vector2& goal) const
+	{
+		return x != goal.x || y != goal.y;
+	}
+
 	Vector2 operator-(const Vector2& vector2) const
 	{
 		return Vector2(x - vector2.x, y - vector2.y);
 	}
 
-	int SqrDistance()
+	float SqrDistance()
 	{
 		return sqrt(x * x + y * y);
 	}
 
 	std::string ToString()
 	{
-		return "(" , x , ", " , y , ")";
+		std::string result = "(%1f, %1f)", x, y;
+		return result;
 	}
 };
 
@@ -65,6 +72,15 @@ struct Node
 	{
 	}
 
+	bool operator==(const Node& otherNode) const
+	{
+		return position == otherNode.position 
+			&& g == otherNode.g 
+			&& h == otherNode.h 
+			&& f == otherNode.f
+			&& parent == otherNode.parent;
+	}
+
 	int GetDistance(Node* from)
 	{
 		Vector2 distanceVector = position - from->position;
@@ -77,11 +93,14 @@ struct Node
 
 
 
-void main()
+int main()
 {
-	GPS(0, 9);
+	//GPS(0, 9);
+	//GPS(1, 8);
 
-	GPS(1, 8);
+	AStar();
+
+	return 0;
 }
 
 
@@ -110,41 +129,62 @@ void AStar()
 		{
 			Node myNode = Node(Vector2(x, y));
 
-			allNodes.push_back(myNode);
-
 			if (x == start.x && y == start.y)
 			{
-				startNode = myNode;
+				myNode.g = 0;
+				myNode.h = 100;
+				myNode.f = 100;
 
-				startNode.g = 0;
-				startNode.h = 100;
-				startNode.f = 100;
+				startNode = myNode;
 			}
 			else if (x == goal.x && y == goal.y)
 			{
 				endNode = myNode;
 			}
+
+			allNodes.push_back(myNode);
 		}
 	}
 
 	currentNode = startNode;
-	while (openNodes.size() != 0)
-	{
-		int optimalF = inf;
-		for (Node node : openNodes)
-		{
-			if (node.f < optimalF)
-			{
-				currentNode = node;
-			}
-		}
+	std::string path = "";
+	bool firstIteration = true;
 
-		openNodes.erase(std::find(openNodes.begin(), openNodes.end(), currentNode));
+	while (openNodes.size() != 0 || currentNode.position == start)
+	{
+		if (!firstIteration)
+		{
+			int optimalF = inf;
+			for (Node node : openNodes)
+			{
+				if (node.f < optimalF)
+				{
+					currentNode = node;
+				}
+			}
+
+			openNodes.erase(std::find(openNodes.begin(), openNodes.end(), currentNode));
+		}
+		else
+		{
+			allNodes.erase(std::find(allNodes.begin(), allNodes.end(), startNode));
+		}
 		closedNodes.push_back(currentNode);
 	
 		if (currentNode.position == goal)
 		{
-			// Recover Path
+			while (currentNode.position != start)
+			{
+				path = currentNode.position.ToString() + " " + path;
+				path = " - " + path;
+				
+				currentNode = *currentNode.parent;
+			}
+			path = currentNode.position.ToString() + " " + path;
+			printf(path.c_str());
+			openNodes.clear();
+			closedNodes.clear();
+			printf(currentNode.f + "\n");
 		}
 
 		childrens.clear();
@@ -155,28 +195,59 @@ void AStar()
 				childrens.push_back(node);
 			}
 		}
+		for (Node node : openNodes)
+		{
+			if (currentNode.GetDistance(&node) < 2)
+			{
+				childrens.push_back(node);
+			}
+		}
 
-		int optimalG = inf;
 		for (Node child : childrens)
 		{
-			child.g = currentNode.g + child.GetDistance(&currentNode);
-			child.h = child.GetDistance(&endNode);
-			child.f = child.g + child.h;
+			bool isOpenNode = std::find(openNodes.begin(), openNodes.end(), child) != openNodes.end();
+
+			if (!isOpenNode)
+			{
+				allNodes.erase(std::find(allNodes.begin(), allNodes.end(), child));
+			}
+
+			float tempG = currentNode.g + child.GetDistance(&currentNode) * 10;
+			float tempH = child.GetDistance(&endNode) * 10;
+			float tempF = tempG + tempH;
+
+			if (tempF < child.f)
+			{
+				child.g = tempG;
+				child.h = tempH;
+				child.f = tempF;
+			}
 
 			bool shouldBeAdded = true; 
-			for (Node node : openNodes)
+			if (isOpenNode)
 			{
-				if (child.g > node.g)
+				for (Node node : openNodes)
 				{
-					shouldBeAdded = false;
+					if (child.g > node.g)
+					{
+						shouldBeAdded = false;
+					}
 				}
 			}
 
 			if (shouldBeAdded)
 			{
 				openNodes.push_back(child);
+				printf("\nNode added to open Nodes : ");
+				printf("(%1f, %1f)", child.position.x, child.position.y);
+			}
+			else 
+			{
+				allNodes.push_back(child);
 			}
 		}
+
+		firstIteration = false;
 	}
 }
 
